@@ -44,13 +44,24 @@ RUN pnpm ui:build
 
 ENV NODE_ENV=production
 
+# Install sudo for entrypoint volume permission fix on Railway/similar platforms
+RUN apt-get update && apt-get install -y --no-install-recommends sudo \
+    && echo "node ALL=(ALL) NOPASSWD: /bin/chown" >> /etc/sudoers.d/node-chown \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Allow non-root user to write temp files during runtime/tests.
 RUN chown -R node:node /app
+
+# Entrypoint fixes volume permissions before starting as non-root
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Security hardening: Run as non-root user
 # The node:22-bookworm image includes a 'node' user (uid 1000)
 # This reduces the attack surface by preventing container escape via root privileges
 USER node
+
+ENTRYPOINT ["docker-entrypoint.sh"]
 
 # Start gateway server with default config.
 # Binds to loopback (127.0.0.1) by default for security.
