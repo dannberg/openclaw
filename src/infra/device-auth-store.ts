@@ -35,7 +35,25 @@ function readStore(filePath: string): DeviceAuthStore | null {
 
 function writeStore(filePath: string, store: DeviceAuthStore): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, `${JSON.stringify(store, null, 2)}\n`, { mode: 0o600 });
+  const content = `${JSON.stringify(store, null, 2)}\n`;
+  try {
+    fs.writeFileSync(filePath, content, { mode: 0o600 });
+  } catch (writeErr) {
+    if ((writeErr as NodeJS.ErrnoException).code !== "EACCES") {
+      throw writeErr;
+    }
+    // File is likely owned by root from a prior container run (e.g. Railway volume).
+    // Attempt to remove it so we can recreate it under the current user.
+    try {
+      fs.rmSync(filePath, { force: true });
+      fs.writeFileSync(filePath, content, { mode: 0o600 });
+    } catch {
+      // Still cannot write (e.g. parent directory is also root-owned).
+      // Proceed without caching — the client will re-authenticate on each
+      // connect via the shared secret token rather than a cached device token.
+      return;
+    }
+  }
   try {
     fs.chmodSync(filePath, 0o600);
   } catch {

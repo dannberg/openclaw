@@ -7,8 +7,11 @@ if [ -d /data ]; then
   sudo chown -R node:node /data 2>/dev/null || true
 fi
 
-# Ensure state directories exist
-mkdir -p "${OPENCLAW_STATE_DIR:-/data/.openclaw}" "${OPENCLAW_WORKSPACE_DIR:-/data/workspace}" 2>/dev/null || true
+# Ensure state directories exist (including identity/ so it's node-owned on first run)
+mkdir -p \
+  "${OPENCLAW_STATE_DIR:-/data/.openclaw}" \
+  "${OPENCLAW_STATE_DIR:-/data/.openclaw}/identity" \
+  "${OPENCLAW_WORKSPACE_DIR:-/data/workspace}" 2>/dev/null || true
 
 # Start tailscaled if binary exists on the persistent volume.
 # Auth state is persisted in the statedir so it reconnects automatically.
