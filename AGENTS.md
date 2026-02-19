@@ -48,6 +48,18 @@
   `pkill -9 -f openclaw-gateway || true; nohup openclaw gateway run --bind loopback --port 18789 --force > /tmp/openclaw-gateway.log 2>&1 &`
 - Verify: `openclaw channels status --probe`, `ss -ltnp | rg 18789`, `tail -n 120 /tmp/openclaw-gateway.log`.
 
+## Railway Deployment (Telegram bot / Rez / @DannsHelperBot)
+
+- Bot `@DannsHelperBot` (Rez) runs as the `openclaw` service on Railway.
+- Auto-deploys on push to `main`; no manual step needed.
+- Startup: `node openclaw.mjs gateway --allow-unconfigured --bind lan --port 8080` (see `railway.toml`).
+- Port: Railway sets `PORT=8080`; gateway binds there for both WebSocket and web UI.
+- Persistent volume: `/data` — stores `openclaw.json` config, device tokens, workspace, canvas.
+- Required Railway env var: `OPENCLAW_GATEWAY_TOKEN` (shared secret; gateway rejects all connections without it).
+- Logs: `railway logs` / `railway logs --tail 200`.
+- Force redeploy (no code change): `railway redeploy --yes` — only works when the service isn't already building.
+- Rootless-container gotcha: `sudo chown` inside the container silently fails for root-owned volume files; `device-auth-store.ts` handles this by catching EACCES on write, attempting `rm`+recreate, and falling back to per-connect shared-secret auth if that also fails.
+
 ## Build, Test, and Development Commands
 
 - Runtime baseline: Node **22+** (keep Node + Bun paths working).
